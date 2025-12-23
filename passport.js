@@ -4,8 +4,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, (accessToken, refreshToken, profile, done) => {
+    // Restrict to institutional domain
     const email = profile.emails[0].value;
     if (email.endsWith("@goa.bits-pilani.ac.in")) {
         return done(null, profile);
