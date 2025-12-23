@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+  <header class="sticky top-0 bg-gray-900/80 backdrop-blur border-b border-gray-700">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-2 font-bold text-lg">
+        <img src="https://bpgc-cte.org/logo.png" alt="CTE Logo" class="w-8 h-8">
+        <span>CTE | BITS Goa</span>
+      </div>
+      <div>
+        <a href="/logout"
+           class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white font-medium transition">
+          Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow flex flex-col items-center justify-center text-center px-6">
+    <h1 class="text-3xl font-bold mb-4">You are verified ✅</h1>
+  </main>
+
+</body>
+</html>
