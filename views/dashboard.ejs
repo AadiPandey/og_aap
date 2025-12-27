@@ -25,8 +25,34 @@
     </div>
   </header>
 
-  <main class="flex-grow flex flex-col items-center justify-center text-center px-6">
-    <h1 class="text-2xl font-bold mb-4"> Welcome, <%= user.displayName %>! </h1>
+  <main class="flex-grow flex flex-col items-center text-center px-6 py-10">
+    <h1 class="text-2xl font-bold mb-8">Welcome, <%= user.displayName %>!</h1>
+
+    <% if (courses.length === 0) { %>
+      <p class="text-gray-400">No courses available at the moment.</p>
+    <% } else { %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-6xl">
+        <% courses.forEach(course => { %>
+          <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col items-center p-4">
+            <img src="<%= course.poster_url %>" alt="<%= course.name %> poster" class="w-full h-48 object-cover mb-4 rounded">
+            <h2 class="text-lg font-semibold mb-4"><%= course.name %></h2>
+
+            <% if (registeredIds.has(course.id)) { %>
+              <span class="px-4 py-2 rounded-md bg-gray-600 text-white font-medium">
+                Registered
+              </span>
+            <% } else { %>
+              <form action="/dashboard/register/<%= course.id %>" method="POST">
+                <button type="submit"
+                  class="px-4 py-2 rounded-md bg-green-600 hover:bg-green-500 text-white font-medium transition">
+                  Register
+                </button>
+              </form>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
   </main>
 
 </body>

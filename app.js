@@ -3,8 +3,13 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('./passport');
 const path = require('path');
+
+const dashboardRoutes = require('./routes/dashboard');
+
 const app = express();
+
 app.use(express.static(path.join(process.cwd(), 'public')));
+
 app.set('views', path.join(process.cwd(), 'views'));
 app.set('view engine', 'ejs');
 
@@ -31,13 +36,12 @@ app.get('/auth/google/callback',
   }
 );
 
-app.get('/dashboard', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.render('dashboard', { user: req.user });
-  } else {
-    res.redirect('/');
-  }
-});
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  res.redirect('/');
+}
+
+app.use('/dashboard', ensureAuthenticated, dashboardRoutes);
 
 app.get('/unauthorized', (req, res) => {
   res.send("Access restricted to BITS Goa users only.");
@@ -49,10 +53,11 @@ app.get('/logout', (req, res) => {
   });
 });
 
-
 if (!process.env.VERCEL) {
   const port = process.env.PORT || 3000;
-  app.listen(port);
+  app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
 }
 
 module.exports = app;
