@@ -21,12 +21,19 @@ router.get('/', async (req, res) => {
 
   const registeredIds = new Set(registrations.map(r => r.course_id));
 
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim());
+  const userEmail = req.user?.email || req.user?.emails?.[0]?.value;
+  const isAdmin = adminEmails?.includes(userEmail);
+  console.log('Admin check:', userEmail, isAdmin);
+
   res.render('dashboard', {
     courses: courses || [],
     registeredIds,
-    user: req.user
+    user: req.user,
+    isAdmin 
   });
 });
+
 
 
 router.post('/register/:courseId', async (req, res) => {

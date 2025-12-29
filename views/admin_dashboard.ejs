@@ -8,13 +8,16 @@
   <h1 class="text-3xl font-bold mb-6">Admin Dashboard</h1>
 
   <div class="flex items-center gap-4 mb-6">
-    <!-- Dynamic download button -->
+    <a href="/dashboard"
+       class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+       Back to User Dashboard
+    </a>
+
     <a id="downloadBtn" href="/admin/registrations/download" 
        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
        Download All Registrations (CSV)
     </a>
 
-    <!-- Course filter dropdown -->
     <label for="courseSelect" class="font-medium">Filter by Course:</label>
     <select id="courseSelect" 
             class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -25,7 +28,6 @@
     </select>
   </div>
 
-  <!-- Grouped registrations table -->
   <h2 class="text-xl font-semibold mb-4">Registrations (Grouped by User)</h2>
   <div class="overflow-x-auto">
     <table id="registrationsTable" class="min-w-full border border-gray-200 rounded shadow-sm bg-white">
@@ -53,7 +55,7 @@
   <div id="noResults" class="hidden mt-4 text-gray-500 italic">
     No registrations found for this course.
   </div>
-
+  
   <script>
     const courseSelect = document.getElementById('courseSelect');
     const downloadBtn = document.getElementById('downloadBtn');
@@ -64,7 +66,6 @@
       const selectedCourseId = courseSelect.value;
       let visibleCount = 0;
 
-      // Update download button
       if (selectedCourseId) {
         downloadBtn.href = `/admin/registrations/${selectedCourseId}/download`;
         downloadBtn.textContent = 'Download This Course (CSV)';
@@ -73,7 +74,6 @@
         downloadBtn.textContent = 'Download All Registrations (CSV)';
       }
 
-      // Filter table rows by course ID
       tableRows.forEach(row => {
         const courseIds = row.getAttribute('data-course-ids').split(',');
         const match = !selectedCourseId || courseIds.includes(selectedCourseId);
@@ -83,7 +83,6 @@
 
       noResults.classList.toggle('hidden', visibleCount !== 0);
     });
-
   </script>
 </body>
 </html>
