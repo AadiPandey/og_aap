@@ -69,7 +69,7 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const tableRows = document.querySelectorAll('#registrationsTable tbody tr');
     const noResults = document.getElementById('noResults');
-    const registrationCount = document.getElementById('registrationCount');
+    const registrationCountText = document.getElementById('registrationCountText');
 
     courseSelect.addEventListener('change', () => {
       const selectedCourseId = courseSelect.value;
@@ -90,11 +90,9 @@
         if (match) visibleCount++;
       });
 
-      if (selectedCourseId) {
-        registrationCount.textContent = `Total Registrations for this course: ${visibleCount}`;
-      } else {
-        registrationCount.textContent = `Total Registrations (all courses): ${visibleCount}`;
-      }
+      registrationCountText.textContent = selectedCourseId
+        ? `Total Registrations for this course: ${visibleCount}`
+        : `Total Registrations (all courses): ${visibleCount}`;
 
       noResults.classList.toggle('hidden', visibleCount !== 0);
     });
