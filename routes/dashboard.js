@@ -24,7 +24,6 @@ router.get('/', async (req, res) => {
   const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim());
   const userEmail = req.user?.email || req.user?.emails?.[0]?.value;
   const isAdmin = adminEmails?.includes(userEmail);
-  console.log('Admin check:', userEmail, isAdmin);
 
   res.render('dashboard', {
     courses: courses || [],
