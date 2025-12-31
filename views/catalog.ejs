@@ -1,11 +1,281 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="utf-8">
+  <title>Course Catalogue | CTE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="https://bpgc-cte.org/logo.png" type="image/png">
+  <style>
+    /* Custom Fade Animation */
+    .fade-anim { animation: fadeEffect 1s; }
+    @keyframes fadeEffect { from {opacity: 0.4} to {opacity: 1} }
+    
+    /* Hide scrollbar for descriptions */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body>
-    <h1>Under construction</h1>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col font-sans">
+
+  <header class="sticky top-0 bg-gray-900/90 backdrop-blur-md border-b border-gray-700 z-50">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+      
+      <a href="/" class="flex items-center gap-3 font-bold text-xl tracking-wide hover:opacity-80 transition">
+        <img src="https://bpgc-cte.org/logo.png" alt="CTE Logo" class="w-8 h-8">
+        <span>CTE | Catalogue</span>
+      </a>
+
+      <div class="flex items-center gap-6">
+        <% if (typeof user !== 'undefined' && user) { %>
+            <a href="/dashboard" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-md shadow-blue-900/20">
+              My Dashboard
+            </a>
+        <% } else { %>
+            <a href="/auth/google" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-md shadow-blue-900/20">
+              Login
+            </a>
+        <% } %>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow flex flex-col items-center px-4 py-8 w-full max-w-7xl mx-auto">
+    
+    <% if (courses && courses.length > 0) { %>
+    <div class="relative w-full max-w-6xl h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl border border-gray-700 group mb-12"
+         onmouseenter="pauseSlides()" 
+         onmouseleave="resumeSlides()">
+      
+      <div id="slides-container" class="w-full h-full">
+        <% courses.slice(0, 5).forEach((course, index) => { %>
+          <div class="mySlides absolute inset-0 w-full h-full hidden fade-anim transition-all duration-700 ease-in-out">
+            <img src="<%= course.poster_url %>" 
+                 class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700 ease-out" 
+                 alt="<%= course.name %>">
+            
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
+
+            <div class="absolute bottom-0 left-0 w-full p-8 md:p-12 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+              <span class="inline-block px-3 py-1 mb-2 text-xs font-semibold tracking-wider text-blue-400 uppercase bg-blue-900/30 rounded-full border border-blue-500/30">
+                Featured Course
+              </span>
+              <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-3 drop-shadow-lg">
+                <%= course.name %>
+              </h2>
+              <p class="text-gray-200 text-lg max-w-3xl line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                <%= course.course_description %>
+              </p>
+              
+              <div class="mt-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-200">
+                 <button class="open-course-popup px-6 py-3 bg-white text-gray-900 font-bold rounded-lg hover:bg-gray-200 transition"
+                    data-course-name="<%= course.name %>"
+                    data-poster-url="<%= course.poster_url %>"
+                    data-course-description="<%= course.course_description %>"
+                    data-handout-url="<%= course.handout_url %>">
+                   View Details
+                 </button>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <button onclick="plusSlides(-1)" class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm z-20">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+      </button>
+      <button onclick="plusSlides(1)" class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm z-20">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+      </button>
+
+      <div class="absolute bottom-4 right-8 flex gap-2 z-20">
+        <% courses.slice(0, 5).forEach((_, i) => { %>
+          <button class="dot w-3 h-3 rounded-full bg-white/50 hover:bg-white transition-all duration-300" onclick="currentSlide(<%= i + 1 %>)"></button>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
+    <div class="w-full max-w-6xl mb-8 flex flex-col md:flex-row justify-between items-end border-b border-gray-800 pb-4 gap-4">
+      <div>
+        <h2 class="text-2xl font-bold text-white">All Courses</h2>
+        <p class="text-gray-400 text-sm mt-1">Browse our full collection of technical courses</p>
+      </div>
+      <div class="relative w-full max-w-md">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input type="text" id="searchInput" 
+               class="block w-full pl-10 pr-4 py-2.5 border border-gray-700 rounded-lg bg-gray-800 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+               placeholder="Search by course name..." 
+               onkeyup="filterCourses()">
+      </div>
+    </div>
+
+    <% if (!courses || courses.length === 0) { %>
+      <div class="text-center py-20 bg-gray-800/50 rounded-2xl w-full border border-gray-700 border-dashed">
+        <p class="text-gray-400 text-xl">No courses available at the moment.</p>
+      </div>
+    <% } else { %>
+      <div id="courseGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
+        <% courses.forEach(course => { %>
+          <div class="course-card bg-gray-800 rounded-xl shadow-lg border border-gray-700/50 overflow-hidden flex flex-col hover:border-gray-500 transition duration-300 group/card" data-name="<%= course.name.toLowerCase() %>">
+            
+            <div class="h-48 overflow-hidden relative">
+              <img src="<%= course.poster_url %>" alt="<%= course.name %>" class="w-full h-full object-cover group-hover/card:scale-105 transition duration-500">
+              <div class="absolute inset-0 bg-black/20 group-hover/card:bg-transparent transition"></div>
+            </div>
+
+            <div class="p-5 flex flex-col flex-grow">
+              <h3 class="text-lg font-bold mb-2 text-white group-hover/card:text-blue-400 transition"><%= course.name %></h3>
+              <p class="text-gray-400 text-sm mb-4 line-clamp-3 flex-grow">
+                <%= course.course_description %>
+              </p>
+
+              <div class="mt-4 pt-4 border-t border-gray-700">
+                <button type="button"
+                    class="open-course-popup w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition shadow-lg shadow-blue-900/20"
+                    data-course-name="<%= course.name %>"
+                    data-poster-url="<%= course.poster_url %>"
+                    data-course-description="<%= course.course_description %>"
+                    data-handout-url="<%= course.handout_url %>">
+                    View Course
+                </button>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+      
+      <div id="noResults" class="hidden text-center py-12 w-full">
+        <p class="text-gray-500 text-lg">No courses found matching your search.</p>
+        <button onclick="document.getElementById('searchInput').value=''; filterCourses();" class="text-blue-400 hover:text-blue-300 underline mt-2">Clear Search</button>
+      </div>
+    <% } %>
+  </main>
+
+  <footer class="bg-gray-900 border-t border-gray-800 py-8 mt-auto text-center">
+    <p class="text-gray-500 text-sm">&copy; <%= new Date().getFullYear() %> CTE BITS Goa. All rights reserved.</p>
+  </footer>
+
+  <div id="coursePopup" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200" onclick="closeCoursePopup()">
+    <div onclick="event.stopPropagation()" class="bg-gray-800 w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl border border-gray-600 relative flex flex-col max-h-[90vh]">
+      <button onclick="closeCoursePopup()" class="absolute top-4 right-4 bg-black/50 hover:bg-black/70 p-2 rounded-full text-white z-10 transition">✕</button>
+      
+      <div class="h-60 relative flex-shrink-0">
+        <img id="popupImage" src="" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-gray-800 via-transparent to-transparent"></div>
+        <h2 id="popupTitle" class="absolute bottom-4 left-6 text-3xl font-bold text-white drop-shadow-md"></h2>
+      </div>
+
+      <div class="p-8 overflow-y-auto">
+        <h4 class="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">Description</h4>
+        <p id="popupDescription" class="text-gray-300 text-sm leading-relaxed mb-8 whitespace-pre-line"></p>
+        
+        <div class="flex gap-4 mt-auto">
+          
+          <a href="/auth/google" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform active:scale-95 text-center flex items-center justify-center">
+             Register from Dashboard
+          </a>
+
+          <a id="popupHandout" href="#" target="_blank" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-3.5 rounded-xl text-center border border-gray-600 transition flex items-center justify-center">
+            View Handout
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* --- SLIDESHOW LOGIC --- */
+    let slideIndex = 1;
+    let slideTimer;
+    let slides = document.getElementsByClassName("mySlides");
+    let dots = document.getElementsByClassName("dot");
+
+    if (slides.length > 0) {
+      showSlides(slideIndex);
+      slideTimer = setInterval(() => plusSlides(1), 5000); 
+    }
+
+    function plusSlides(n) { showSlides(slideIndex += n); }
+    function currentSlide(n) { showSlides(slideIndex = n); }
+    function showSlides(n) {
+      if (n > slides.length) {slideIndex = 1}
+      if (n < 1) {slideIndex = slides.length}
+      
+      for (let i = 0; i < slides.length; i++) {
+        slides[i].style.display = "none";  
+        slides[i].classList.remove('block');
+        slides[i].classList.add('hidden');
+      }
+      for (let i = 0; i < dots.length; i++) {
+        dots[i].classList.remove('bg-white', 'scale-125');
+        dots[i].classList.add('bg-white/50');
+      }
+
+      slides[slideIndex-1].style.display = "block";  
+      slides[slideIndex-1].classList.remove('hidden');
+      dots[slideIndex-1].classList.remove('bg-white/50');
+      dots[slideIndex-1].classList.add('bg-white', 'scale-125');
+    }
+
+    function pauseSlides() { clearInterval(slideTimer); }
+    function resumeSlides() { slideTimer = setInterval(() => plusSlides(1), 5000); }
+
+    /* --- SEARCH FILTER --- */
+    function filterCourses() {
+      const input = document.getElementById('searchInput');
+      const filter = input.value.toLowerCase();
+      const grid = document.getElementById('courseGrid');
+      const cards = grid.getElementsByClassName('course-card');
+      const noResults = document.getElementById('noResults');
+      let visibleCount = 0;
+
+      for (let i = 0; i < cards.length; i++) {
+        const name = cards[i].getAttribute('data-name');
+        if (name.includes(filter)) {
+          cards[i].classList.remove('hidden');
+          visibleCount++;
+        } else {
+          cards[i].classList.add('hidden');
+        }
+      }
+      
+      if(visibleCount === 0) noResults.classList.remove('hidden');
+      else noResults.classList.add('hidden');
+    }
+
+    /* --- POPUP LOGIC --- */
+    document.querySelectorAll('.open-course-popup').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = btn.dataset;
+        openCoursePopup(d.courseName, d.posterUrl, d.courseDescription, d.handoutUrl);
+      });
+    });
+
+    function openCoursePopup(name, poster, desc, handout) {
+      document.getElementById('popupTitle').innerText = name;
+      document.getElementById('popupImage').src = poster;
+      document.getElementById('popupDescription').innerText = desc || 'No description available.';
+      
+      const handoutBtn = document.getElementById('popupHandout');
+      if(handout && handout !== 'null' && handout !== '') {
+        handoutBtn.href = handout;
+        handoutBtn.classList.remove('hidden');
+      } else {
+        handoutBtn.classList.add('hidden');
+      }
+      
+      document.getElementById('coursePopup').classList.remove('hidden');
+    }
+
+    function closeCoursePopup() {
+      document.getElementById('coursePopup').classList.add('hidden');
+    }
+  </script>
 </body>
 </html>

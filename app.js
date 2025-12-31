@@ -20,8 +20,25 @@ app.get('/', (req, res) => {
   res.render('index');
 });
 
-app.get('/catalog', (req, res) => {
-  res.render('catalog'); 
+app.get('/catalog', async (req, res) => {
+  try {
+    const { data: courses, error } = await supabaseAdmin
+      .from('cte_courses')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching courses:', error);
+      return res.status(500).send('Error loading courses');
+    }
+
+    res.render('catalog', {
+      courses: courses || [],
+      user: req.user || null
+    });
+  } catch (err) {
+    console.error('Unexpected error loading catalog:', err);
+    res.status(500).send('Error loading catalog');
+  }
 });
 
 app.use(session({
