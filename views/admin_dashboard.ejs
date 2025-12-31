@@ -243,17 +243,6 @@
         });
       }
     });
-    async function loadUsers(page, limit) {
-      const res = await fetch(`/dashboard?page=${page}&limit=${limit}`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
-      const html = await res.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const newTable = doc.querySelector('#usersTableContainer');
-
-      document.querySelector('#usersTableContainer').innerHTML = newTable.innerHTML;
-    }
   </script>
 </body>
 
