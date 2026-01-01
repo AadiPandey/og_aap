@@ -4,13 +4,37 @@ const supabase = require('../supabaseClient');
 const supabaseAdmin = require('../supabaseAdmin');
 
 router.get('/', async (req, res) => {
-  const userId = req.user.id;
+  const userId = String(req.user.id);
 
-  const { data: courses, error: courseError } = await supabase
-    .from('cte_courses')
-    .select('*');
+  const { data: users, error: userError } = await supabaseAdmin
+    .from('users')
+    .select('google_id, email, display_name, phone_number')
+    .eq('google_id', userId);
 
-  const { data: registrations, error: regError } = await supabase
+  if (userError) {
+    console.error('Error fetching user record:', userError);
+    return res.status(500).send('Error loading user record');
+  }
+
+  let userRecord = users && users.length > 0 ? users[0] : null;
+
+  if (!userRecord) {
+    await supabaseAdmin.from('users').insert([{
+      google_id: userId,
+      email: req.user.email,
+      display_name: req.user.displayName,
+      phone_number: null
+    }]);
+    return res.redirect('/dashboard/enter-phone');
+  }
+
+  const hasPhone = userRecord.phone_number !== null && userRecord.phone_number !== undefined && userRecord.phone_number.trim() !== '';
+  if (!hasPhone) {
+    return res.redirect('/dashboard/enter-phone');
+  }
+
+  const { data: courses, error: courseError } = await supabaseAdmin.from('cte_courses').select('*');
+  const { data: registrations, error: regError } = await supabaseAdmin
     .from('course_registrations')
     .select('course_id')
     .eq('user_id', userId);
@@ -25,30 +49,47 @@ router.get('/', async (req, res) => {
   const userEmail = req.user?.email || req.user?.emails?.[0]?.value;
   let isAdmin = false;
   if (userEmail) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('admins')
-        .select('email')
-        .eq('email', userEmail)
-        .single();
+    const { data: admins } = await supabaseAdmin
+      .from('admins')
+      .select('email')
+      .eq('email', userEmail);
 
-      if (error) {
-        console.error('Error checking admin:', error);
-      }
-
-      if (data) {
-        isAdmin = true;
-      }
-    } catch (err) {
-      console.error('Unexpected error checking admin:', err);
+    if (admins && admins.length > 0) {
+      isAdmin = true;
     }
   }
+
   res.render('dashboard', {
     courses: courses || [],
     registeredIds,
     user: req.user,
     isAdmin
   });
+});
+
+router.get('/enter-phone', (req, res) => {
+  res.render('enter_phone', { user: req.user });
+});
+
+router.post('/enter-phone', async (req, res) => {
+  const { phone_number } = req.body;
+  const userId = String(req.user.id);
+  const phoneRegex = /^[0-9]{10}$/;
+  if (!phoneRegex.test(phone_number)) {
+    return res.status(400).send('Invalid phone number format');
+  }
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({ phone_number })
+    .eq('google_id', userId);
+
+  if (error) {
+    console.error('Error saving phone number:', error);
+    return res.status(500).send('Could not save phone number');
+  }
+
+  res.redirect('/dashboard');
 });
 
 router.post('/register/:courseId', async (req, res) => {
