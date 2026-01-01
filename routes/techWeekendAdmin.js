@@ -13,6 +13,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     .from('tw_registrations')
     .select(`
       user_id,
+      phone_number,
       tw_users: user_id (email, display_name),
       tw_events: event_id (id, name)
     `);
@@ -26,10 +27,11 @@ router.get('/dashboard', isAdmin, async (req, res) => {
   data.forEach(r => {
     const email = r.tw_users?.email;
     const name = r.tw_users?.display_name;
+    const phone = r.phone_number;
     const event = { id: r.tw_events?.id, name: r.tw_events?.name };
 
     if (!grouped[email]) {
-      grouped[email] = { email, display_name: name, events: [event] };
+      grouped[email] = { email, display_name: name, phone_number: phone, events: [event] };
     } else {
       grouped[email].events.push(event);
     }
@@ -38,6 +40,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
   const groupedData = Object.values(grouped).map(u => ({
     email: u.email,
     display_name: u.display_name,
+    phone_number: u.phone_number,
     events_registered: u.events.map(e => e.name).join(', '),
     total_events: u.events.length,
     event_ids: u.events.map(e => e.id)
@@ -60,6 +63,7 @@ router.get('/registrations/download', isAdmin, async (req, res) => {
     .from('tw_registrations')
     .select(`
       user_id,
+      phone_number,
       tw_users: user_id (email, display_name),
       tw_events: event_id (name)
     `);
@@ -73,10 +77,11 @@ router.get('/registrations/download', isAdmin, async (req, res) => {
   data.forEach(r => {
     const email = r.tw_users?.email;
     const name = r.tw_users?.display_name;
+    const phone = r.phone_number;
     const event = r.tw_events?.name;
 
     if (!grouped[email]) {
-      grouped[email] = { email, display_name: name, events: [event] };
+      grouped[email] = { email, display_name: name, phone_number: phone, events: [event] };
     } else {
       grouped[email].events.push(event);
     }
@@ -85,6 +90,7 @@ router.get('/registrations/download', isAdmin, async (req, res) => {
   const flatData = Object.values(grouped).map(u => ({
     email: u.email,
     display_name: u.display_name,
+    phone_number: u.phone_number,
     events_registered: u.events.join(', '),
     total_events: u.events.length
   }));
@@ -104,6 +110,7 @@ router.get('/registrations/:eventId/download', isAdmin, async (req, res) => {
     .from('tw_registrations')
     .select(`
       user_id,
+      phone_number,
       tw_users: user_id (email, display_name)
     `)
     .eq('event_id', eventId);
@@ -119,7 +126,8 @@ router.get('/registrations/:eventId/download', isAdmin, async (req, res) => {
 
   const flatData = data.map(r => ({
     email: r.tw_users?.email,
-    display_name: r.tw_users?.display_name
+    display_name: r.tw_users?.display_name,
+    phone_number: r.phone_number
   }));
 
   const parser = new Parser();

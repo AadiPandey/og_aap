@@ -10,7 +10,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
       .from('course_registrations')
       .select(`
         user_id,
-        users: user_id (email, display_name),
+        users: user_id (email, display_name,phone_number),
         cte_courses: course_id (id, name)
       `);
 
@@ -23,10 +23,11 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     registrationsData.forEach(r => {
       const email = r.users?.email;
       const name = r.users?.display_name;
+      const phone = r.users?.phone_number;
       const course = { id: r.cte_courses?.id, name: r.cte_courses?.name };
 
       if (!grouped[email]) {
-        grouped[email] = { email, display_name: name, courses: [course] };
+        grouped[email] = { email, display_name: name, phone_number:phone, courses: [course] };
       } else {
         grouped[email].courses.push(course);
       }
@@ -35,6 +36,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const groupedData = Object.values(grouped).map(u => ({
       email: u.email,
       display_name: u.display_name,
+      phone_number: u.phone_number,
       courses_registered: u.courses.map(c => c.name).join(', '),
       total_courses: u.courses.length,
       course_ids: u.courses.map(c => c.id)
@@ -55,7 +57,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     console.log(page,limit,offset); 
     const { data: users, error: userError, count } = await supabaseAdmin
       .from('users')
-      .select('email, display_name, created_at', { count: 'exact' })
+      .select('email, display_name,phone_number, created_at', { count: 'exact' })
       .order('display_name',{ascending:true})
       .range(offset, offset + limit - 1);
 
@@ -104,7 +106,7 @@ router.get('/registrations/download', async (req, res) => {
     .from('course_registrations')
     .select(`
       user_id,
-      users: user_id (email, display_name),
+      users: user_id (email, display_name,phone_number),
       cte_courses: course_id (name)
     `);
 
@@ -117,12 +119,14 @@ router.get('/registrations/download', async (req, res) => {
   data.forEach(r => {
     const email = r.users?.email;
     const name = r.users?.display_name;
+    const phone = r.users?.phone_number;
     const course = r.cte_courses?.name;
 
     if (!grouped[email]) {
       grouped[email] = {
         email,
         display_name: name,
+        phone_number:phone, 
         courses: [course]
       };
     } else {
@@ -133,6 +137,7 @@ router.get('/registrations/download', async (req, res) => {
   const flatData = Object.values(grouped).map(u => ({
     email: u.email,
     display_name: u.display_name,
+    phone_number: u.phone_number,
     courses_registered: u.courses.join(', '),
     total_courses: u.courses.length
   }));
@@ -152,7 +157,7 @@ router.get('/registrations/:courseId/download', async (req, res) => {
     .from('course_registrations')
     .select(`
       user_id,
-      users: user_id (email, display_name)
+      users: user_id (email, display_name,phone_number)
     `)
     .eq('course_id', courseId);
 
@@ -167,7 +172,8 @@ router.get('/registrations/:courseId/download', async (req, res) => {
 
   const flatData = data.map(r => ({
     email: r.users?.email,
-    display_name: r.users?.display_name
+    display_name: r.users?.display_name,
+    phone_number :r.users?.phone_number
   }));
 
   const parser = new Parser();

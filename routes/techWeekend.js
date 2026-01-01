@@ -52,12 +52,18 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/register/:eventId', async (req, res) => {
-  const userId = req.user.id;
+  const userId = String(req.user.id);
   const eventId = req.params.eventId;
+  const { phone_number } = req.body;
 
-  const { error } = await supabase
+  const phoneRegex = /^[0-9]{10}$/;
+  if (!phoneRegex.test(phone_number)) {
+    return res.status(400).send('Invalid phone number format');
+  }
+
+  const { error } = await supabaseAdmin
     .from('tw_registrations')
-    .insert([{ user_id: userId, event_id: eventId }]);
+    .insert([{ user_id: userId, event_id: eventId, phone_number }]);
 
   if (error) {
     console.error('Registration error:', error);
