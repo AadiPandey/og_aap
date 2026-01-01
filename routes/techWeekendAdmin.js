@@ -3,6 +3,8 @@ const router = express.Router();
 const supabaseAdmin = require('../supabaseAdmin');
 const { Parser } = require('json2csv');
 const isAdmin = require('../middleware/isAdmin');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/', isAdmin, (req, res) => {
   res.redirect('/admin/techweekend/dashboard');
@@ -138,53 +140,124 @@ router.get('/registrations/:eventId/download', isAdmin, async (req, res) => {
   res.send(csv);
 });
 
-router.post('/events/add', isAdmin, async (req, res) => {
-  const { name, poster_url, event_description } = req.body;
 
-  const { error } = await supabaseAdmin
-    .from('tw_events')
-    .insert([{ name, poster_url, event_description }]);
+router.post('/events/add', isAdmin, upload.single('poster'), async (req, res) => {
+  try {
+    const { name, event_description } = req.body;
+    const posterFile = req.file;
 
-  if (error) {
-    console.error('Error adding event:', error);
-    return res.status(500).send('Error adding event');
+    if (!posterFile) {
+      return res.status(400).send('Poster file is required');
+    }
+
+    const posterPath = `events/${Date.now()}_${posterFile.originalname}`;
+
+    const { error: posterError } = await supabaseAdmin.storage
+      .from('tw_event_posters')
+      .upload(posterPath, posterFile.buffer, {
+        contentType: posterFile.mimetype,
+      });
+    if (posterError) throw posterError;
+
+    const { data: posterData } = supabaseAdmin
+      .storage
+      .from('tw_event_posters')
+      .getPublicUrl(posterPath);
+
+    const posterUrl = posterData.publicUrl;
+
+    const { error } = await supabaseAdmin
+      .from('tw_events')
+      .insert([{ name, event_description, poster_url: posterUrl }]);
+
+    if (error) throw error;
+
+    res.redirect('/admin/techweekend/dashboard');
+  } catch (err) {
+    console.error('Error adding event:', err);
+    res.status(500).send('Error adding event');
   }
-
-  res.redirect('/admin/techweekend/dashboard');
 });
 
-router.post('/events/edit/:id', isAdmin, async (req, res) => {
+router.post('/events/edit/:id', isAdmin, upload.single('poster'), async (req, res) => {
   const eventId = req.params.id;
-  const { name, poster_url, event_description } = req.body;
+  const { name, event_description } = req.body;
 
-  const { error } = await supabaseAdmin
-    .from('tw_events')
-    .update({ name, poster_url, event_description })
-    .eq('id', eventId);
+  try {
+    const { data: event, error: fetchError } = await supabaseAdmin
+      .from('tw_events')
+      .select('poster_url')
+      .eq('id', eventId)
+      .single();
 
-  if (error) {
-    console.error('Error editing event:', error);
-    return res.status(500).send('Error editing event');
+    if (fetchError) throw fetchError;
+
+    let posterUrl = event.poster_url;
+
+    if (req.file) {
+      const posterFile = req.file;
+      const posterPath = `events/${Date.now()}_${posterFile.originalname}`;
+
+      const { error: posterError } = await supabaseAdmin.storage
+        .from('tw_event_posters')
+        .upload(posterPath, posterFile.buffer, {
+          contentType: posterFile.mimetype,
+        });
+      if (posterError) throw posterError;
+
+      const { data: posterData } = supabaseAdmin
+        .storage
+        .from('tw_event_posters')
+        .getPublicUrl(posterPath);
+
+      posterUrl = posterData.publicUrl;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('tw_events')
+      .update({ name, event_description, poster_url: posterUrl })
+      .eq('id', eventId);
+
+    if (error) throw error;
+
+    res.redirect('/admin/techweekend/dashboard');
+  } catch (err) {
+    console.error('Error editing event:', err);
+    res.status(500).send('Error editing event');
   }
-
-  res.redirect('/admin/techweekend/dashboard');
 });
 
 router.post('/events/delete/:id', isAdmin, async (req, res) => {
   const eventId = req.params.id;
 
-  const { error } = await supabaseAdmin
-    .from('tw_events')
-    .delete()
-    .eq('id', eventId);
+  try {
+    const { data: event, error: fetchError } = await supabaseAdmin
+      .from('tw_events')
+      .select('poster_url')
+      .eq('id', eventId)
+      .single();
 
-  if (error) {
-    console.error('Error deleting event:', error);
-    return res.status(500).send('Error deleting event');
+    if (fetchError) throw fetchError;
+
+    if (event.poster_url) {
+      const posterPath = event.poster_url.split('/tw_event_posters/')[1];
+      if (posterPath) {
+        await supabaseAdmin.storage.from('tw_event_posters').remove([posterPath]);
+      }
+    }
+
+    const { error } = await supabaseAdmin
+      .from('tw_events')
+      .delete()
+      .eq('id', eventId);
+
+    if (error) throw error;
+
+    res.redirect('/admin/techweekend/dashboard');
+  } catch (err) {
+    console.error('Error deleting event:', err);
+    res.status(500).send('Error deleting event');
   }
-
-  res.redirect('/admin/techweekend/dashboard');
 });
-
 
 module.exports = router;

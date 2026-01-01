@@ -104,7 +104,6 @@
     </div>
   </div>
 
-  <!-- Events Section -->
   <div id="eventsSection" class="hidden tab-content">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold">Manage TechWeekend Events</h2>
@@ -114,20 +113,22 @@
       </button>
     </div>
 
-    <!-- Add Event Form -->
-    <form id="addEventForm" action="/admin/techweekend/events/add" method="POST"
+    <form id="addEventForm" action="/admin/techweekend/events/add" method="POST" enctype="multipart/form-data"
       class="hidden mb-6 bg-gray-800 p-4 rounded">
       <h3 class="text-lg font-bold mb-2">Add Event</h3>
       <input type="text" name="name" placeholder="Event Name"
         class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white" required>
-      <input type="text" name="poster_url" placeholder="Poster URL"
-        class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white" required>
+
+      <label for="poster" class="block text-sm text-gray-300 mb-1">Poster Image (JPG/PNG)</label>
+      <input type="file" id="poster" name="poster" accept="image/*" required
+        class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white">
+
       <textarea name="event_description" placeholder="Event Description"
         class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white" required></textarea>
+
       <button type="submit" class="px-4 py-2 bg-green-600 rounded hover:bg-green-500">Add Event</button>
     </form>
 
-    <!-- Event Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <% events.forEach(e=> { %>
         <div class="bg-gray-800 rounded-lg shadow-md p-4 flex flex-col justify-between">
@@ -149,46 +150,47 @@
               class="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-500">Edit</button>
           </div>
 
-          <!-- Inline Edit Form -->
           <form id="editForm-<%= e.id %>" action="/admin/techweekend/events/edit/<%= e.id %>" method="POST"
-            class="hidden mt-4">
-            <input type="text" name="name" value="<%= e.name %>"
-              class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white" required>
-            <input type="text" name="poster_url" value="<%= e.poster_url %>"
-              class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white" required>
-            <textarea name="event_description" class="w-full mb-2 px-3 py-2 rounded bg-gray-700 text-white"
+            enctype="multipart/form-data" class="hidden mt-4 space-y-3">
+            <input type="text" name="name" value="<%= e.name %>" class="w-full px-3 py-2 rounded bg-gray-700 text-white"
+              required>
+
+            <label for="poster-<%= e.id %>" class="block text-sm text-gray-300">Replace Poster (optional)</label>
+            <input type="file" id="poster-<%= e.id %>" name="poster" accept="image/*"
+              class="w-full px-3 py-2 rounded bg-gray-700 text-white">
+
+            <textarea name="event_description" class="w-full px-3 py-2 rounded bg-gray-700 text-white"
               required><%= e.event_description %></textarea>
+
             <button type="submit" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-500">Save Changes</button>
+            <button type="button" onclick="toggleEditForm('<%= e.id %>')"
+              class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500">Cancel</button>
           </form>
         </div>
         <% }) %>
     </div>
+
   </div>
   <script>
-    // Toggle sections with + / - arrows
     function toggleSection(sectionId, arrowId) {
       const section = document.getElementById(sectionId);
       const arrow = document.getElementById(arrowId);
       const isVisible = !section.classList.contains('hidden');
 
-      // Hide all sections
       document.querySelectorAll('.tab-content').forEach(s => s.classList.add('hidden'));
       document.querySelectorAll('[id$="Arrow"]').forEach(a => a.textContent = '+');
 
-      // Toggle selected section
       if (!isVisible) {
         section.classList.remove('hidden');
         arrow.textContent = '-';
       }
     }
 
-    // Toggle inline edit form for events
     function toggleEditForm(id) {
       const form = document.getElementById(`editForm-${id}`);
       form.classList.toggle('hidden');
     }
 
-    // Event filter + CSV download logic
     const eventSelect = document.getElementById('eventSelect');
     const downloadBtn = document.getElementById('downloadBtn');
     const tableRows = document.querySelectorAll('#registrationsTable tbody tr');
