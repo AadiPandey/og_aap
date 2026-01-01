@@ -3,6 +3,8 @@ const router = express.Router();
 const supabaseAdmin = require('../supabaseAdmin');
 const { Parser } = require('json2csv');
 const isAdmin = require('../middleware/isAdmin');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/dashboard', isAdmin, async (req, res) => {
   try {
@@ -27,7 +29,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
       const course = { id: r.cte_courses?.id, name: r.cte_courses?.name };
 
       if (!grouped[email]) {
-        grouped[email] = { email, display_name: name, phone_number:phone, courses: [course] };
+        grouped[email] = { email, display_name: name, phone_number: phone, courses: [course] };
       } else {
         grouped[email].courses.push(course);
       }
@@ -54,11 +56,10 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
-    console.log(page,limit,offset); 
     const { data: users, error: userError, count } = await supabaseAdmin
       .from('users')
       .select('email, display_name,phone_number, created_at', { count: 'exact' })
-      .order('display_name',{ascending:true})
+      .order('display_name', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (userError) {
@@ -126,7 +127,7 @@ router.get('/registrations/download', async (req, res) => {
       grouped[email] = {
         email,
         display_name: name,
-        phone_number:phone, 
+        phone_number: phone,
         courses: [course]
       };
     } else {
@@ -173,7 +174,7 @@ router.get('/registrations/:courseId/download', async (req, res) => {
   const flatData = data.map(r => ({
     email: r.users?.email,
     display_name: r.users?.display_name,
-    phone_number :r.users?.phone_number
+    phone_number: r.users?.phone_number
   }));
 
   const parser = new Parser();
@@ -184,53 +185,178 @@ router.get('/registrations/:courseId/download', async (req, res) => {
   res.send(csv);
 });
 
-router.post('/courses/add', async (req, res) => {
-  const { name, poster_url, course_description, handout_url } = req.body;
+router.post('/courses/add', isAdmin, upload.fields([
+  { name: 'poster', maxCount: 1 },
+  { name: 'handout', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { name, course_description } = req.body;
+    const posterFile = req.files.poster?.[0];
+    const handoutFile = req.files.handout?.[0];
 
-  const { error } = await supabaseAdmin
-    .from('cte_courses')
-    .insert([{ name, poster_url, course_description, handout_url }]);
+    const posterPath = `posters/${Date.now()}_${posterFile.originalname}`;
+    const handoutPath = `handouts/${Date.now()}_${handoutFile.originalname}`;
 
-  if (error) {
-    console.error('Error adding course:', error);
-    return res.status(500).send('Failed to add course');
+    const { error: posterError } = await supabaseAdmin.storage
+      .from('course_posters')
+      .upload(posterPath, posterFile.buffer, {
+        contentType: posterFile.mimetype,
+      });
+    if (posterError) throw posterError;
+
+    const { error: handoutError } = await supabaseAdmin.storage
+      .from('course_handouts')
+      .upload(handoutPath, handoutFile.buffer, {
+        contentType: handoutFile.mimetype,
+      });
+    if (handoutError) throw handoutError;
+
+    const { data: posterData } = supabaseAdmin
+      .storage
+      .from('course_posters')
+      .getPublicUrl(posterPath);
+
+    const { data: handoutData } = supabaseAdmin
+      .storage
+      .from('course_handouts')
+      .getPublicUrl(handoutPath);
+
+    const posterUrl = posterData.publicUrl;
+    const handoutUrl = handoutData.publicUrl;
+
+    console.log('Poster URL:', posterUrl);
+    console.log('Handout URL:', handoutUrl);
+
+    // Insert into DB
+    const { error } = await supabaseAdmin
+      .from('cte_courses')
+      .insert([{
+        name,
+        course_description,
+        poster_url: posterUrl,
+        handout_url: handoutUrl,
+      }]);
+
+    if (error) throw error;
+
+    res.redirect('/admin/dashboard');
+  } catch (err) {
+    console.error('Error adding course:', err);
+    res.status(500).send('Failed to add course');
   }
-
-  res.redirect('/admin/dashboard');
 });
 
-router.post('/courses/:id/delete', async (req, res) => {
+
+router.post('/courses/:id/delete', isAdmin, async (req, res) => {
   const { id } = req.params;
 
-  const { error } = await supabaseAdmin
-    .from('cte_courses')
-    .delete()
-    .eq('id', id);
+  try {
+    const { data: course, error: fetchError } = await supabaseAdmin
+      .from('cte_courses')
+      .select('poster_url, handout_url')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Error deleting course:', error);
-    return res.status(500).send('Failed to delete course');
+    if (fetchError) throw fetchError;
+
+    const posterPath = course.poster_url?.split('/course_posters/')[1];
+    const handoutPath = course.handout_url?.split('/course_handouts/')[1];
+
+    if (posterPath) {
+      await supabaseAdmin.storage.from('course_posters').remove([posterPath]);
+    }
+    if (handoutPath) {
+      await supabaseAdmin.storage.from('course_handouts').remove([handoutPath]);
+    }
+
+    const { error } = await supabaseAdmin
+      .from('cte_courses')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.redirect('/admin/dashboard');
+  } catch (err) {
+    console.error('Error deleting course:', err);
+    res.status(500).send('Failed to delete course');
   }
-
-  res.redirect('/admin/dashboard');
 });
 
-router.post('/courses/:id/edit', async (req, res) => {
+router.post('/courses/:id/edit', isAdmin, upload.fields([
+  { name: 'poster', maxCount: 1 },
+  { name: 'handout', maxCount: 1 }
+]), async (req, res) => {
   const { id } = req.params;
-  const { name, poster_url, course_description, handout_url } = req.body;
+  const { name, course_description } = req.body;
 
-  const { error } = await supabaseAdmin
-    .from('cte_courses')
-    .update({ name, poster_url, course_description, handout_url })
-    .eq('id', id);
+  try {
+    const { data: course, error: fetchError } = await supabaseAdmin
+      .from('cte_courses')
+      .select('poster_url, handout_url')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Error editing course:', error);
-    return res.status(500).send('Failed to edit course');
+    if (fetchError) throw fetchError;
+
+    let posterUrl = course.poster_url;
+    let handoutUrl = course.handout_url;
+
+    if (req.files.poster) {
+      const posterFile = req.files.poster[0];
+      const posterPath = `posters/${Date.now()}_${posterFile.originalname}`;
+      const { error: posterError } = await supabaseAdmin.storage
+        .from('course_posters')
+        .upload(posterPath, posterFile.buffer, {
+          contentType: posterFile.mimetype,
+        });
+      if (posterError) throw posterError;
+
+      const { data: posterData } = supabaseAdmin
+        .storage
+        .from('course_posters')
+        .getPublicUrl(posterPath);
+
+      posterUrl = posterData.publicUrl;
+    }
+
+    if (req.files.handout) {
+      const handoutFile = req.files.handout[0];
+      const handoutPath = `handouts/${Date.now()}_${handoutFile.originalname}`;
+      const { error: handoutError } = await supabaseAdmin.storage
+        .from('course_handouts')
+        .upload(handoutPath, handoutFile.buffer, {
+          contentType: handoutFile.mimetype,
+        });
+      if (handoutError) throw handoutError;
+
+      const { data: handoutData } = supabaseAdmin
+        .storage
+        .from('course_handouts')
+        .getPublicUrl(handoutPath);
+
+      handoutUrl = handoutData.publicUrl;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('cte_courses')
+      .update({
+        name,
+        course_description,
+        poster_url: posterUrl,
+        handout_url: handoutUrl,
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.redirect('/admin/dashboard');
+  } catch (err) {
+    console.error('Error editing course:', err);
+    res.status(500).send('Failed to edit course');
   }
-
-  res.redirect('/admin/dashboard');
 });
+
 
 router.post('/promote', isAdmin, async (req, res) => {
   const email = req.body.email;

@@ -116,15 +116,17 @@
       </button>
     </div>
 
-    <div id="addCourseForm" class="hidden mb-6 bg-gray-800 p-4 rounded-lg shadow-md">
-      <form action="/admin/courses/add" method="POST" class="space-y-4">
+    <div id="addCourseForm" class="hidden bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+      <form action="/admin/courses/add" method="POST" enctype="multipart/form-data" class="space-y-3">
         <input type="text" name="name" placeholder="Course Name" required
-          class="w-full px-3 py-2 rounded bg-gray-700 text-white">
-        <input type="url" name="poster_url" placeholder="Poster URL" required
           class="w-full px-3 py-2 rounded bg-gray-700 text-white">
         <textarea name="course_description" placeholder="Course Description" required
           class="w-full px-3 py-2 rounded bg-gray-700 text-white"></textarea>
-        <input type="url" name="handout_url" placeholder="Handout URL" required
+        <label for="poster" class="block text-sm text-gray-300 mb-1">Poster Image (JPG/PNG)</label>
+        <input type="file" id="poster" name="poster" accept="image/*" required
+          class="w-full px-3 py-2 rounded bg-gray-700 text-white">
+        <label for="handout" class="block text-sm text-gray-300 mb-1">Handout PDF</label>
+        <input type="file" id="handout" name="handout" accept="application/pdf" required
           class="w-full px-3 py-2 rounded bg-gray-700 text-white">
         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">Submit</button>
         <button type="button" onclick="hideAddCourseForm()"
@@ -160,14 +162,16 @@
           </div>
 
           <div id="editForm-<%= course.id %>" class="hidden mt-3 bg-gray-700 p-4 rounded-lg">
-            <form action="/admin/courses/<%= course.id %>/edit" method="POST" class="space-y-3">
+            <form action="/admin/courses/<%= course.id %>/edit" method="POST" enctype="multipart/form-data"
+              class="space-y-3">
               <input type="text" name="name" value="<%= course.name %>" required
-                class="w-full px-3 py-2 rounded bg-gray-800 text-white">
-              <input type="url" name="poster_url" value="<%= course.poster_url %>" required
                 class="w-full px-3 py-2 rounded bg-gray-800 text-white">
               <textarea name="course_description" required
                 class="w-full px-3 py-2 rounded bg-gray-800 text-white"><%= course.course_description %></textarea>
-              <input type="url" name="handout_url" value="<%= course.handout_url %>" required
+              <label class="block text-sm text-gray-300">Replace Poster (optional)</label>
+              <input type="file" name="poster" accept="image/*" class="w-full px-3 py-2 rounded bg-gray-800 text-white">
+              <label class="block text-sm text-gray-300">Replace Handout (optional)</label>
+              <input type="file" name="handout" accept="application/pdf"
                 class="w-full px-3 py-2 rounded bg-gray-800 text-white">
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500">Save</button>
               <button type="button" onclick="toggleEditForm('<%= course.id %>')"
@@ -177,7 +181,9 @@
         </div>
         <% }) %>
     </div>
+
   </div>
+
   <div id="usersSection" class="hidden tab-content">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-semibold text-white">Registered Users</h2>
@@ -304,7 +310,7 @@
         }
       }
     });
- 
+
     function toggleEditForm(courseId) {
       const form = document.getElementById(`editForm-${courseId}`);
       form.classList.toggle('hidden');
