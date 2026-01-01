@@ -5,6 +5,7 @@ const session = require('express-session');
 const passport = require('./passport');
 const path = require('path');
 const supabaseAdmin = require('./supabaseAdmin');
+const indexRoutes = require('./routes/index');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRouter = require('./routes/admin');
 const techWeekendRouter = require('./routes/techWeekend');
@@ -16,10 +17,6 @@ app.set('view engine', 'ejs');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); 
-
-app.get('/', (req, res) => {
-  res.render('index');
-});
 
 app.get('/catalog', async (req, res) => {
   try {
@@ -106,6 +103,7 @@ function ensureAuthenticated(req, res, next) {
   res.redirect('/');
 }
 
+app.use('/', indexRoutes);
 app.use('/dashboard', ensureAuthenticated, dashboardRoutes);
 app.use('/tech-weekend', ensureAuthenticated, techWeekendRouter);
 
