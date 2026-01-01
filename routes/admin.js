@@ -52,11 +52,11 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
-
+    console.log(page,limit,offset); 
     const { data: users, error: userError, count } = await supabaseAdmin
       .from('users')
-      .select('google_id, email, display_name, created_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .select('email, display_name, created_at', { count: 'exact' })
+      .order('display_name',{ascending:true})
       .range(offset, offset + limit - 1);
 
     if (userError) {
