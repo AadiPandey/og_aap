@@ -96,9 +96,27 @@ router.post('/register/:courseId', async (req, res) => {
   const userId = req.user.id;
   const courseId = req.params.courseId;
 
+  // Fetch display_name from users table
+  const { data: userData, error: userFetchError } = await supabaseAdmin
+    .from('users')
+    .select('display_name')
+    .eq('google_id', userId)
+    .single();
+
+  if (userFetchError) {
+    console.error('Error fetching user display_name:', userFetchError);
+    return res.status(500).send('Could not fetch user info');
+  }
+
+  const displayName = userData?.display_name || req.user.displayName || '';
+
   const { error } = await supabase
     .from('course_registrations')
-    .insert([{ user_id: userId, course_id: courseId }]);
+    .insert([{
+      user_id: userId,
+      course_id: courseId,
+      display_name: displayName   // ✅ new column populated
+    }]);
 
   if (error) {
     console.error('Registration error:', error);

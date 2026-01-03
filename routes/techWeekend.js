@@ -61,9 +61,29 @@ router.post('/register/:eventId', async (req, res) => {
     return res.status(400).send('Invalid phone number format');
   }
 
+  // ✅ Fetch display_name from tw_users table
+  const { data: twUser, error: twUserError } = await supabaseAdmin
+    .from('tw_users')
+    .select('display_name')
+    .eq('id', userId)
+    .single();
+
+  if (twUserError) {
+    console.error('Error fetching TechWeekend user display_name:', twUserError);
+    return res.status(500).send('Could not fetch TechWeekend user info');
+  }
+
+  const displayName = twUser?.display_name || req.user.displayName || '';
+
+  // ✅ Insert registration with display_name
   const { error } = await supabaseAdmin
     .from('tw_registrations')
-    .insert([{ user_id: userId, event_id: eventId, phone_number }]);
+    .insert([{
+      user_id: userId,
+      event_id: eventId,
+      phone_number,
+      display_name: displayName
+    }]);
 
   if (error) {
     console.error('Registration error:', error);

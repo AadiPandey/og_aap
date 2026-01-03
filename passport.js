@@ -5,9 +5,9 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     //Use this when you want to test locally 
-    // callbackURL: "/auth/google/callback" 
+    callbackURL: "/auth/google/callback" 
     //Use this when you want to deploy for production 
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
+    // callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, (accessToken, refreshToken, profile, done) => {
     const email = profile.emails[0].value;
     if (email.endsWith("@goa.bits-pilani.ac.in")) {

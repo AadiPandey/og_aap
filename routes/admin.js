@@ -19,7 +19,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     users: user_id (email, display_name, phone_number),
     cte_courses: course_id (id, name)
   `, { count: 'exact' })
-      .order('user_id', { ascending: true })  
+      .order('display_name', { ascending: true })
       .range(regOffset, regOffset + regLimit - 1);
 
     if (regError) {

@@ -25,6 +25,7 @@ router.get('/dashboard', isAdmin, async (req, res) => {
         tw_users: user_id (email, display_name),
         tw_events: event_id (id, name)
       `, { count: 'exact' })
+      .order('display_name', { ascending: true })
       .range(regOffset, regOffset + regLimit - 1);
 
     if (error) {
