@@ -11,54 +11,91 @@ router.get('/', isAdmin, (req, res) => {
 });
 
 router.get('/dashboard', isAdmin, async (req, res) => {
-  const { data, error } = await supabaseAdmin
-    .from('tw_registrations')
-    .select(`
-      user_id,
-      phone_number,
-      tw_users: user_id (email, display_name),
-      tw_events: event_id (id, name)
-    `);
+  try {
+    // --- Registrations pagination ---
+    const regPage = parseInt(req.query.regPage) || 1;
+    const regLimit = parseInt(req.query.regLimit) || 20;
+    const regOffset = (regPage - 1) * regLimit;
 
-  if (error) {
-    console.error('Error fetching TechWeekend dashboard data:', error);
-    return res.status(500).send('Error loading admin dashboard');
-  }
+    const { data, error, count } = await supabaseAdmin
+      .from('tw_registrations')
+      .select(`
+        user_id,
+        phone_number,
+        tw_users: user_id (email, display_name),
+        tw_events: event_id (id, name)
+      `, { count: 'exact' })
+      .range(regOffset, regOffset + regLimit - 1);
 
-  const grouped = {};
-  data.forEach(r => {
-    const email = r.tw_users?.email;
-    const name = r.tw_users?.display_name;
-    const phone = r.phone_number;
-    const event = { id: r.tw_events?.id, name: r.tw_events?.name };
-
-    if (!grouped[email]) {
-      grouped[email] = { email, display_name: name, phone_number: phone, events: [event] };
-    } else {
-      grouped[email].events.push(event);
+    if (error) {
+      console.error('Error fetching TechWeekend dashboard data:', error);
+      return res.status(500).send('Error loading admin dashboard');
     }
-  });
 
-  const groupedData = Object.values(grouped).map(u => ({
-    email: u.email,
-    display_name: u.display_name,
-    phone_number: u.phone_number,
-    events_registered: u.events.map(e => e.name).join(', '),
-    total_events: u.events.length,
-    event_ids: u.events.map(e => e.id)
-  }));
+    // Flatten into raw rows
+    const registrations = data.map(r => ({
+      user_id: r.user_id,
+      email: r.tw_users?.email,
+      display_name: r.tw_users?.display_name,
+      phone_number: r.phone_number,
+      event_name: r.tw_events?.name,
+      event_id: r.tw_events?.id
+    }));
 
-  const { data: events, error: eventError } = await supabaseAdmin
-    .from('tw_events')
-    .select('id, name, poster_url, event_description');
+    // Sort alphabetically by display name
+    registrations.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''));
 
-  if (eventError) {
-    console.error('Error fetching events:', eventError);
-    return res.status(500).send('Error loading events');
+    // --- Events list ---
+    const { data: events, error: eventError } = await supabaseAdmin
+      .from('tw_events')
+      .select('id, name, poster_url, event_description');
+
+    if (eventError) {
+      console.error('Error fetching events:', eventError);
+      return res.status(500).send('Error loading events');
+    }
+
+    // Pagination metadata
+    const totalPages = Math.ceil((count || 0) / regLimit);
+    const prevPage = regPage > 1 ? regPage - 1 : null;
+    const nextPage = regPage < totalPages ? regPage + 1 : null;
+
+    res.render('techweekend_admin_dashboard', {
+      registrations,
+      events,
+      registrationsTotalPages: totalPages,
+      registrationsCurrentPage: regPage,
+      registrationsPrevPage: prevPage,
+      registrationsNextPage: nextPage,
+      registrationsLimit: regLimit
+    });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    res.status(500).send('Internal Server Error');
   }
-
-  res.render('techweekend_admin_dashboard', { registrations: groupedData, events });
 });
+
+router.post('/techweekend/registrations/delete', isAdmin, async (req, res) => {
+  try {
+    const { user_id, event_id } = req.body;
+
+    const { error } = await supabaseAdmin
+      .from('tw_registrations')
+      .delete()
+      .match({ user_id, event_id });
+
+    if (error) {
+      console.error('Error deleting registration:', error);
+      return res.status(500).send('Error deleting registration');
+    }
+
+    res.redirect('/admin/dashboard?tab=registrations');
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 
 router.get('/registrations/download', isAdmin, async (req, res) => {
   const { data, error } = await supabaseAdmin
