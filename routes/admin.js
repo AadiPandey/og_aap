@@ -8,40 +8,36 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/dashboard', isAdmin, async (req, res) => {
   try {
-    const { data: registrationsData, error: regError } = await supabaseAdmin
+    const regPage = parseInt(req.query.regPage) || 1;
+    const regLimit = parseInt(req.query.regLimit) || 20;
+    const regOffset = (regPage - 1) * regLimit;
+
+    const { data: registrationsData, error: regError, count: regCount } = await supabaseAdmin
       .from('course_registrations')
       .select(`
-        user_id,
-        users: user_id (email, display_name,phone_number),
-        cte_courses: course_id (id, name)
-      `);
+    user_id,
+    users: user_id (email, display_name, phone_number),
+    cte_courses: course_id (id, name)
+  `, { count: 'exact' })
+      .order('user_id', { ascending: true })  
+      .range(regOffset, regOffset + regLimit - 1);
 
     if (regError) {
       console.error('Error fetching registrations:', regError);
       return res.status(500).send('Error loading registrations');
     }
 
-    const grouped = {};
-    registrationsData.forEach(r => {
-      const email = r.users?.email;
-      const name = r.users?.display_name;
-      const phone = r.users?.phone_number;
-      const course = { id: r.cte_courses?.id, name: r.cte_courses?.name };
+    registrationsData.sort((a, b) =>
+      (a.users?.display_name || '').localeCompare(b.users?.display_name || '')
+    );
 
-      if (!grouped[email]) {
-        grouped[email] = { email, display_name: name, phone_number: phone, courses: [course] };
-      } else {
-        grouped[email].courses.push(course);
-      }
-    });
-
-    const groupedData = Object.values(grouped).map(u => ({
-      email: u.email,
-      display_name: u.display_name,
-      phone_number: u.phone_number,
-      courses_registered: u.courses.map(c => c.name).join(', '),
-      total_courses: u.courses.length,
-      course_ids: u.courses.map(c => c.id)
+    const registrations = registrationsData.map(r => ({
+      user_id: r.user_id,
+      email: r.users?.email,
+      display_name: r.users?.display_name,
+      phone_number: r.users?.phone_number,
+      course_name: r.cte_courses?.name,
+      course_id: r.cte_courses?.id
     }));
 
     const { data: courses, error: courseError } = await supabaseAdmin
@@ -56,9 +52,10 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+
     const { data: users, error: userError, count } = await supabaseAdmin
       .from('users')
-      .select('email, display_name,phone_number, created_at', { count: 'exact' })
+      .select('email, display_name, phone_number, created_at', { count: 'exact' })
       .order('display_name', { ascending: true })
       .range(offset, offset + limit - 1);
 
@@ -79,10 +76,14 @@ router.get('/dashboard', isAdmin, async (req, res) => {
     const prevPage = page > 1 ? page - 1 : null;
     const nextPage = page < totalPages ? page + 1 : null;
 
+    const registrationsTotalPages = Math.ceil((regCount || 0) / regLimit);
+    const registrationsPrevPage = regPage > 1 ? regPage - 1 : null;
+    const registrationsNextPage = regPage < registrationsTotalPages ? regPage + 1 : null;
+
     const activeTab = req.query.tab || null;
 
     res.render('admin_dashboard', {
-      registrations: groupedData,
+      registrations,
       courses,
       users: annotatedUsers,
       totalPages,
@@ -90,6 +91,11 @@ router.get('/dashboard', isAdmin, async (req, res) => {
       prevPage,
       nextPage,
       limit,
+      registrationsTotalPages,
+      registrationsCurrentPage: regPage,
+      registrationsPrevPage,
+      registrationsNextPage,
+      registrationsLimit: regLimit,
       user: req.user,
       isAdmin: true,
       activeTab
@@ -97,6 +103,32 @@ router.get('/dashboard', isAdmin, async (req, res) => {
 
   } catch (err) {
     console.error('Unexpected error:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
+router.post('/registrations/delete', isAdmin, async (req, res) => {
+  const { user_id, course_id } = req.body;
+
+  if (!user_id || !course_id) {
+    return res.status(400).send('Missing registration identifiers');
+  }
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('course_registrations')
+      .delete()
+      .match({ user_id, course_id });
+
+    if (error) {
+      console.error('Error deleting registration:', error);
+      return res.status(500).send('Failed to delete registration');
+    }
+
+    res.redirect('/admin/dashboard?tab=registrations');
+  } catch (err) {
+    console.error('Unexpected error during deletion:', err);
     res.status(500).send('Internal Server Error');
   }
 });

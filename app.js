@@ -5,7 +5,6 @@ const session = require('express-session');
 const passport = require('./passport');
 const path = require('path');
 const supabaseAdmin = require('./supabaseAdmin');
-const indexRoutes = require('./routes/index');
 const dashboardRoutes = require('./routes/dashboard');
 const adminRouter = require('./routes/admin');
 const techWeekendRouter = require('./routes/techWeekend');
@@ -102,8 +101,9 @@ function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
   res.redirect('/');
 }
-
-app.use('/', indexRoutes);
+app.get('/',(req,res)=>{
+  res.render('index');
+})
 app.use('/dashboard', ensureAuthenticated, dashboardRoutes);
 app.use('/tech-weekend', ensureAuthenticated, techWeekendRouter);
 
